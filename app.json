@@ -9,6 +9,15 @@
     "ios": {
       "supportsTablet": true
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "VisionAI uses your camera to capture photos for AI analysis.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

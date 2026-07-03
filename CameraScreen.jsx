@@ -1,11 +1,17 @@
 import { useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CameraScreen({ navigation }) {
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
+  const insets = useSafeAreaInsets();
+  const shadowStyle = Platform.select({
+    ios: styles.shadowIos,
+    android: styles.shadowAndroid,
+  });
 
   async function takePicture() {
     if (!cameraRef.current) {
@@ -19,13 +25,18 @@ export default function CameraScreen({ navigation }) {
   }
 
   if (!permission) {
-    return <View style={styles.container} />;
+    return <View style={[styles.container, { paddingTop: insets.top }]} />;
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>We need your permission to use the camera</Text>
+      <View style={[styles.permissionContainer, { paddingTop: insets.top + 20 }]}> 
+        <Text style={styles.permissionTitle}>Camera access required</Text>
+        <Text style={styles.permissionText}>
+          {Platform.OS === 'ios'
+            ? 'VisionAI needs camera access. Tap below, then choose Allow in the dialog.'
+            : 'VisionAI needs camera access. Tap below to grant permission.'}
+        </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
@@ -36,11 +47,14 @@ export default function CameraScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
-      <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+      <TouchableOpacity
+        style={[styles.captureButton, shadowStyle, { bottom: insets.bottom + 24 }]}
+        onPress={takePicture}
+      >
         <Text style={styles.captureButtonText}>Capture</Text>
       </TouchableOpacity>
       {photo ? (
-        <View style={styles.photoNotice}>
+        <View style={[styles.photoNotice, { top: insets.top + 16 }]}> 
           <Text style={styles.photoNoticeText}>Photo captured</Text>
         </View>
       ) : null}
@@ -51,57 +65,75 @@ export default function CameraScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#090E21',
   },
   camera: {
     flex: 1,
   },
   captureButton: {
     position: 'absolute',
-    bottom: 40,
     alignSelf: 'center',
-    backgroundColor: '#2E5BBA',
-    paddingVertical: 14,
-    paddingHorizontal: 36,
-    borderRadius: 30,
+    backgroundColor: '#7C5DFF',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 36,
   },
   captureButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    backgroundColor: '#08101F',
+  },
+  permissionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   permissionText: {
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     fontSize: 16,
+    color: '#D9E0FF',
+    lineHeight: 22,
   },
   permissionButton: {
-    backgroundColor: '#2E5BBA',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#7C5DFF',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 10,
   },
   permissionButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontSize: 15,
   },
   photoNotice: {
     position: 'absolute',
-    top: 54,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(18, 22, 44, 0.85)',
     borderRadius: 18,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
   photoNoticeText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  shadowIos: {
+    shadowColor: '#7C5DFF',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+  },
+  shadowAndroid: {
+    elevation: 10,
   },
 });

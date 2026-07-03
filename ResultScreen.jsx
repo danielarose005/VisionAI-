@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROMPTS, ANALYSIS_PROMPT, analyzeImage } from './lib/gemini';
 
 export default function ResultScreen({ route, navigation }) {
   const { base64Image, promptKey } = route.params ?? {};
+  const insets = useSafeAreaInsets();
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,55 +105,78 @@ export default function ResultScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#f7f7fb',
+    backgroundColor: '#0C132D',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#f7f7fb',
+    backgroundColor: '#0C132D',
   },
   loadingText: {
     marginTop: 12,
-    color: '#5A6472',
+    color: '#C7D1FF',
     fontSize: 16,
   },
   errorText: {
-    color: '#B3261E',
+    color: '#FF8C8C',
     textAlign: 'center',
     fontSize: 16,
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#5B3FA3',
+    backgroundColor: '#7C5DFF',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontSize: 15,
   },
   content: {
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  heroSubtitle: {
+    color: '#C7D1FF',
+    fontSize: 14,
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: '#171F41',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 18 },
+    shadowRadius: 24,
+    elevation: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    color: '#1F2A44',
+    fontWeight: '700',
+    marginTop: 20,
+    color: '#E6E9FF',
   },
   listItem: {
     fontSize: 15,
-    marginTop: 4,
-    color: '#333',
+    marginTop: 8,
+    color: '#D7E1FF',
+    lineHeight: 22,
   },
   bodyText: {
     fontSize: 15,
-    marginTop: 4,
-    color: '#2B2F38',
+    marginTop: 8,
+    color: '#C7D1FF',
+    lineHeight: 22,
   },
 });

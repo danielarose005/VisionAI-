@@ -1,107 +1,101 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ANALYSIS_PROMPT, analyzeImage } from './lib/gemini';
+import { PROMPTS, ANALYSIS_PROMPT, analyzeImage } from './lib/gemini';
 
 export default function ResultScreen({ route, navigation }) {
-  const { base64Image } = route.params ?? {};
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(Boolean(base64Image));
-  const [error, setError] = useState('');
+  const { base64Image, promptKey } = route.params ?? {};
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    runAnalysis();
+  }, []);
+
+  async function runAnalysis() {
     if (!base64Image) {
       setError('No image available to analyze.');
       setLoading(false);
       return;
     }
 
-    let isActive = true;
+    setLoading(true);
+    setError(null);
 
-    async function runAnalysis() {
-      setLoading(true);
-      setError('');
+    try {
+      const prompt = (promptKey && PROMPTS[promptKey]) || ANALYSIS_PROMPT;
+      const result = await analyzeImage(base64Image, prompt);
+      const textPart = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-      try {
-        const json = await analyzeImage(base64Image, ANALYSIS_PROMPT);
-
-        if (!isActive) {
-          return;
-        }
-
-        const responseText = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-        let parsedResult = null;
-
-        try {
-          parsedResult = JSON.parse(responseText);
-        } catch {
-          parsedResult = { raw: responseText };
-        }
-
-        setResult(parsedResult);
-      } catch (err) {
-        if (!isActive) {
-          return;
-        }
-
-        setError(err.message || 'Unable to analyze the image right now.');
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
+      if (!textPart) {
+        throw new Error('Empty response from Gemini');
       }
+
+      const parsed = parseJsonText(textPart);
+      setAnalysis(parsed);
+    } catch (err) {
+      setError('Could not analyze this image. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function parseJsonText(text) {
+    const trimmed = text.trim();
+    let jsonText = trimmed;
+
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```.*\n/, '');
+      jsonText = jsonText.replace(/\n```$/, '');
     }
 
-    runAnalysis();
+    jsonText = jsonText.trim();
+    return JSON.parse(jsonText);
+  }
 
-    return () => {
-      isActive = false;
-    };
-  }, [base64Image]);
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#5B3FA3" />
+        <Text style={styles.loadingText}>Analyzing image...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={runAnalysis}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Analysis</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.sectionTitle}>Objects</Text>
+        {Array.isArray(analysis.objects) ? (
+          analysis.objects.map((obj, index) => (
+            <Text key={index} style={styles.listItem}>
+              • {obj}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.bodyText}>{analysis.objects || 'No objects detected.'}</Text>
+        )}
 
-      {loading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#5B3FA3" />
-          <Text style={styles.statusText}>Analyzing image...</Text>
-        </View>
-      ) : null}
+        <Text style={styles.sectionTitle}>Context</Text>
+        <Text style={styles.bodyText}>{analysis.context}</Text>
 
-      {error ? (
-        <View style={styles.centerState}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+        <Text style={styles.sectionTitle}>Activities</Text>
+        <Text style={styles.bodyText}>{analysis.activities}</Text>
 
-      {!loading && !error && result ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Section title="Objects" content={result.objects} />
-          <Section title="Context" content={result.context} />
-          <Section title="Activities" content={result.activities} />
-          <Section title="Recommendations" content={result.recommendations} />
-        </ScrollView>
-      ) : null}
-    </View>
-  );
-}
-
-function Section({ title, content }) {
-  const displayContent = Array.isArray(content)
-    ? content.join(', ')
-    : content || 'No details available.';
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionText}>{displayContent}</Text>
+        <Text style={styles.sectionTitle}>Recommendations</Text>
+        <Text style={styles.bodyText}>{analysis.recommendations}</Text>
+      </ScrollView>
     </View>
   );
 }
@@ -109,67 +103,55 @@ function Section({ title, content }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
+    paddingTop: 60,
     backgroundColor: '#f7f7fb',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 48,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
-  },
-  backText: {
-    color: '#5B3FA3',
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-  },
-  headerSpacer: {
-    width: 48,
-  },
-  centerState: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    backgroundColor: '#f7f7fb',
   },
-  statusText: {
+  loadingText: {
     marginTop: 12,
+    color: '#5A6472',
     fontSize: 16,
-    color: '#555',
   },
   errorText: {
-    color: '#c0392b',
+    color: '#B3261E',
     textAlign: 'center',
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#5B3FA3',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   content: {
-    padding: 20,
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    paddingBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#222',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    color: '#1F2A44',
   },
-  sectionText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#555',
+  listItem: {
+    fontSize: 15,
+    marginTop: 4,
+    color: '#333',
+  },
+  bodyText: {
+    fontSize: 15,
+    marginTop: 4,
+    color: '#2B2F38',
   },
 });

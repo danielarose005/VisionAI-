@@ -11,12 +11,30 @@ export default function PreviewScreen({ route, navigation }) {
 
     const base64Image = await imageToBase64(photoUri);
     console.log('Base64 length:', base64Image.length);
-    navigation.navigate('Result', { base64Image });
+    navigation.navigate('Result', { base64Image, promptKey: 'academic' });
+  }
+
+  async function goAnalyze(personaKey) {
+    if (!photoUri) return;
+    const base64Image = await imageToBase64(photoUri);
+    navigation.navigate('Result', { base64Image, promptKey: personaKey });
   }
 
   return (
     <View style={styles.container}>
       <Image source={{ uri: photoUri }} style={styles.preview} />
+
+      <View style={styles.personaRow}>
+        <TouchableOpacity onPress={() => goAnalyze('academic')}>
+          <Text style={styles.personaLabel}>Academic Analysis</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => goAnalyze('safety')}>
+          <Text style={styles.personaLabel}>Safety Analysis</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => goAnalyze('inventory')}>
+          <Text style={styles.personaLabel}>Inventory Analysis</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.retakeButton} onPress={() => navigation.goBack()}>
@@ -45,6 +63,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     padding: 20,
     backgroundColor: '#000',
+  },
+  personaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#000',
+  },
+  personaLabel: {
+    color: '#fff',
+    fontWeight: 'bold',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#3A3F55',
   },
   retakeButton: {
     backgroundColor: '#5A6472',

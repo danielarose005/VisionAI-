@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { imageToBase64 } from './lib/gemini';
 
@@ -7,20 +8,49 @@ export default function PreviewScreen({ route, navigation }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = width >= 768;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  async function handleAnalyze() {
+  useEffect(() => {
+    maybeAutoAnalyze();
+  }, [photoUri, route.params?.autoAnalyze]);
+
+  async function analyzeWithPersona(personaKey) {
     if (!photoUri) {
+      setError('No photo available to analyze.');
       return;
     }
 
-    const base64Image = await imageToBase64(photoUri);
-    navigation.navigate('Result', { base64Image, promptKey: 'academic' });
+    setError(null);
+    setLoading(true);
+
+    try {
+      const base64Image = await imageToBase64(photoUri);
+      if (!base64Image) {
+        throw new Error('Failed to convert image to base64.');
+      }
+
+      navigation.navigate('Result', { base64Image, promptKey: personaKey, photoUri });
+    } catch (err) {
+      console.warn('Analyze failed:', err);
+      setError('Unable to analyze the image. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function goAnalyze(personaKey) {
-    if (!photoUri) return;
+  function handleAnalyze() {
+    analyzeWithPersona('academic');
+  }
+
+  function goAnalyze(personaKey) {
+    analyzeWithPersona(personaKey);
+  }
+
+  async function maybeAutoAnalyze() {
+    if (!photoUri || !route.params?.autoAnalyze) return;
     const base64Image = await imageToBase64(photoUri);
-    navigation.navigate('Result', { base64Image, promptKey: personaKey });
+    navigation.replace('Result', { base64Image, promptKey: 'academic', photoUri });
   }
 
   return (
@@ -40,24 +70,26 @@ export default function PreviewScreen({ route, navigation }) {
       <Text style={styles.personaPrompt}>Tap a persona to shape the analysis tone.</Text>
 
       <View style={styles.personaRow}>
-        <TouchableOpacity style={[styles.personaButton, styles.academicButton]} onPress={() => goAnalyze('academic')}>
+        <TouchableOpacity style={[styles.personaButton, styles.academicButton]} onPress={() => goAnalyze('academic')} disabled={loading}>
           <Text style={styles.personaLabel}>Academic</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.personaButton, styles.safetyButton]} onPress={() => goAnalyze('safety')}>
+        <TouchableOpacity style={[styles.personaButton, styles.safetyButton]} onPress={() => goAnalyze('safety')} disabled={loading}>
           <Text style={styles.personaLabel}>Safety</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.personaButton, styles.inventoryButton]} onPress={() => goAnalyze('inventory')}>
+        <TouchableOpacity style={[styles.personaButton, styles.inventoryButton]} onPress={() => goAnalyze('inventory')} disabled={loading}>
           <Text style={styles.personaLabel}>Inventory</Text>
         </TouchableOpacity>
       </View>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.retakeButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.retakeButton} onPress={() => navigation.goBack()} disabled={loading}>
           <Text style={styles.buttonText}>Retake</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.analyzeButton} onPress={handleAnalyze}>
-          <Text style={styles.buttonText}>Academic</Text>
+        <TouchableOpacity style={[styles.analyzeButton, loading ? styles.disabledButton : null]} onPress={handleAnalyze} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Analyze</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -69,47 +101,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#090E21',
     paddingTop: 18,
-  },
-  previewWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  preview: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-    borderRadius: 24,
-    backgroundColor: '#11152B',
-  },
-  personaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  personaButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-  },
-  academicButton: {
-    backgroundColor: '#4F74FF',
-  },
-  safetyButton: {
-    backgroundColor: '#FF6F61',
-  },
-  inventoryButton: {
-    backgroundColor: '#3AD29F',
-  },
-  personaLabel: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
   },
   heroRow: {
     paddingHorizontal: 20,

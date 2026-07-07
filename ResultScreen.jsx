@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PROMPTS, ANALYSIS_PROMPT, analyzeImage } from './lib/gemini';
+import { saveAnalysisHistory } from './lib/supabase';
 
 export default function ResultScreen({ route, navigation }) {
-  const { base64Image, promptKey } = route.params ?? {};
+  const { base64Image, promptKey, photoUri } = route.params ?? {};
   const insets = useSafeAreaInsets();
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [historySaved, setHistorySaved] = useState(false);
 
   useEffect(() => {
     runAnalysis();
@@ -27,18 +29,39 @@ export default function ResultScreen({ route, navigation }) {
     try {
       const prompt = (promptKey && PROMPTS[promptKey]) || ANALYSIS_PROMPT;
       const result = await analyzeImage(base64Image, prompt);
+
+      if (result?.error) {
+        throw new Error(`Gemini API Error: ${result.error.message} (Code: ${result.error.code})`);
+      }
+
       const textPart = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!textPart) {
-        throw new Error('Empty response from Gemini');
+        throw new Error('Empty response from Gemini (no candidate text found).');
       }
 
       const parsed = parseJsonText(textPart);
       setAnalysis(parsed);
+      await persistAnalysis(parsed);
     } catch (err) {
-      setError('Could not analyze this image. Please try again.');
+      console.error('Run Analysis Error:', err);
+      setError(`Could not analyze this image. ${err.message || err}`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function persistAnalysis(parsed) {
+    try {
+      await saveAnalysisHistory({
+        objects: Array.isArray(parsed.objects) ? parsed.objects.join(', ') : parsed.objects || '',
+        context: parsed.context || '',
+        activities: parsed.activities || '',
+        recommendations: parsed.recommendations || '',
+      });
+      setHistorySaved(true);
+    } catch (err) {
+      console.warn('History save failed:', err.message || err, err.details || '', err.hint || '', err);
     }
   }
 
@@ -178,5 +201,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#C7D1FF',
     lineHeight: 22,
+  },
+  historyStatus: {
+    color: '#A9F0D1',
+    fontSize: 14,
+    marginBottom: 12,
+    fontWeight: '600',
   },
 });

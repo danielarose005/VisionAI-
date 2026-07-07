@@ -46,6 +46,11 @@ export default function CameraScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.header, { top: insets.top + 16 }]}> 
+        <TouchableOpacity style={styles.historyButton} onPress={() => navigation.navigate('History')}>
+          <Text style={styles.historyButtonText}>History</Text>
+        </TouchableOpacity>
+      </View>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       <TouchableOpacity
         style={[styles.captureButton, shadowStyle, { bottom: insets.bottom + 24 }]}
@@ -135,5 +140,21 @@ const styles = StyleSheet.create({
   },
   shadowAndroid: {
     elevation: 10,
+  },
+  header: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 10,
+  },
+  historyButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  historyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
